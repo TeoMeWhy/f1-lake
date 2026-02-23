@@ -12,6 +12,10 @@ A gravação ficará disponível no [YouTube](https://youtube.com/@teomewhy) par
 - [Camada Bronze](#camada-bronze)
 - [Camada Silver](#camada-silver)
 - [Camada Gold](#camada-gold)
+- [Treinamento do Modelo](#treinamento-do-modelo)
+- [Aplicação para usuário](#aplicação-para-usuário)
+
+<img src="./img/f1-lake.png">
 
 ### Coleta
 

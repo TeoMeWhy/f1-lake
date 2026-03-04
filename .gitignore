@@ -1,3 +1,5 @@
 *.env
 *.parquet
 .vscode
+
+__pycache__

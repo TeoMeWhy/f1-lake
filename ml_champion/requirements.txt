@@ -1,0 +1,10 @@
+mlflow==3.9.0
+cloudpickle==3.1.2
+feature-engine==1.9.4
+numpy==2.4.2
+pandas==2.3.3
+psutil==7.2.2
+pyarrow==23.0.1
+scikit-learn==1.8.0
+scipy==1.17.1
+dotenv==1.2.2

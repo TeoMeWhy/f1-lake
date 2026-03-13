@@ -1,14 +1,30 @@
 # %%
 
+import mlflow
+
 import pandas as pd
-from sklearn import model_selection
-from feature_engine import imputation
 from sklearn import ensemble
+from sklearn import model_selection
 from sklearn import metrics
+from sklearn import pipeline
+
+from feature_engine import imputation
+
+import matplotlib.pyplot as plt
+
+import dotenv
+dotenv.load_dotenv
+
+import os
+
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
+# %%
+
+mlflow.set_tracking_uri(os.getenv("MLFLOW_URI"))
+mlflow.set_experiment(experiment_id=677237241718907824)
 
 # %%
 df = pd.read_csv("../data/abt_f1_drivers_champion.csv", sep=";")
@@ -80,9 +96,6 @@ missing = imputation.ArbitraryNumberImputer(
     arbitrary_number=-10000,
     variables=X_train.columns.tolist())
 
-X_train_transform = missing.fit_transform(X_train)
-
-# %%
 
 clf = ensemble.RandomForestClassifier(
     min_samples_leaf=50,
@@ -91,65 +104,48 @@ clf = ensemble.RandomForestClassifier(
     n_jobs=4,
 )
 
-clf.fit(X_train_transform, y_train)
+model = pipeline.Pipeline(steps=[
+    ('Imputation', missing),
+    ("RandomForest", clf)
+])
 
 # %%
 
-y_train_pred = clf.predict(X_train_transform)
-y_train_prob = clf.predict_proba(X_train_transform)[:,1]
-auc_train = metrics.roc_auc_score(y_train, y_train_prob)
-roc_train = metrics.roc_curve(y_train, y_train_prob)
-print("AUC Train:", auc_train)
-conf_matrix_train = metrics.confusion_matrix(y_train, y_train_pred)
-print("Matriz de confusão TREINO:\n", conf_matrix_train)
+with mlflow.start_run():
+    model.fit(X_train, y_train)
+    
+    y_train_prob = model.predict_proba(X_train)[:,1]
+    roc_train = metrics.roc_curve(y_train, y_train_prob)
+    auc_train = metrics.roc_auc_score(y_train, y_train_prob)
+    mlflow.log_metric("ROC Train", auc_train)
 
-# %%
+    y_test_prob = model.predict_proba(X_test)[:,1]
+    roc_test = metrics.roc_curve(y_test, y_test_prob)
+    auc_test = metrics.roc_auc_score(y_test, y_test_prob)
+    mlflow.log_metric("ROC Test", auc_test)
 
-X_test_transform = missing.fit_transform(X_test)
-y_test_pred = clf.predict(X_test_transform)
-y_test_prob = clf.predict_proba(X_test_transform)[:,1]
-auc_test = metrics.roc_auc_score(y_test, y_test_prob)
-roc_test = metrics.roc_curve(y_test, y_test_prob)
-print("AUC Test:", auc_test)
-conf_matrix_test = metrics.confusion_matrix(y_test, y_test_pred)
-print("Matriz de confusão TREINO:", conf_matrix_test)
+    y_oot_pred = model.predict(X_oot)
+    y_oot_prob = model.predict_proba(X_oot)[:,1]
+    auc_oot = metrics.roc_auc_score(y_oot, y_oot_prob)
+    roc_oot = metrics.roc_curve(y_oot, y_oot_prob)
+    mlflow.log_metric("ROC OOT", auc_oot)
 
+    plt.figure(dpi=100)
+    plt.plot(roc_train[0], roc_train[1])
+    plt.plot(roc_test[0], roc_test[1])
+    plt.plot(roc_oot[0], roc_oot[1])
+    plt.legend([f"Treino: {auc_train:.4f}", f"Teste: {auc_test:.4f}", f"OOT: {auc_oot:.4f}"])
+    plt.grid(True)
+    plt.title("Curva ROC")
+    plt.savefig("roc_curve.png")
+    mlflow.log_artifact("roc_curve.png")
 
-# %%
+    feature_importance = pd.Series(clf.feature_importances_, index=X_train.columns)
+    feature_importance = feature_importance.sort_values(ascending=False)
+    feature_importance.to_markdown("feature_importances.md")
+    mlflow.log_artifact("feature_importances.md")
 
-X_oot_transform = missing.fit_transform(X_oot)
-y_oot_pred = clf.predict(X_oot_transform)
-y_oot_prob = clf.predict_proba(X_oot_transform)[:,1]
-auc_oot = metrics.roc_auc_score(y_oot, y_oot_prob)
-roc_oot = metrics.roc_curve(y_oot, y_oot_prob)
+    model.fit(df[features], df['flChampion'])
 
-print("AUC OOT:", auc_oot)
+    mlflow.sklearn.log_model(model, name="model")
 
-# %%
-
-import matplotlib.pyplot as plt
-
-plt.plot(roc_train[0], roc_train[1])
-plt.plot(roc_test[0], roc_test[1])
-plt.plot(roc_oot[0], roc_oot[1])
-plt.legend([f"Treino: {auc_train:.4f}", f"Teste: {auc_test:.4f}", f"OOT: {auc_oot:.4f}"])
-plt.grid(True)
-plt.title("Curva ROC")
-
-# %%
-
-feature_importance = pd.Series(clf.feature_importances_, index=X_train_transform.columns)
-feature_importance = feature_importance.sort_values(ascending=False)
-feature_importance.head(20)
-
-# %%
-
-df_oot['pred'] = y_oot_prob
-
-# %%
-
-df_oot[['driverid', 'dt_ref', 'flChampion', 'pred']].sort_values(['dt_ref', 'pred'], ascending=False).to_csv("../data/oot_predict.csv", index=False)
-
-# %%
-
-df_oot["dt_ref"].nunique()

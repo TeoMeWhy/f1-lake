@@ -1,0 +1,19 @@
+services:
+
+  collector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/app/data/
+    env_file:
+      - .env
+
+  f1_app:
+    build:
+      context: app/
+      dockerfile: Dockerfile
+    ports:
+      - 8501:8501
+    env_file:
+      - .env

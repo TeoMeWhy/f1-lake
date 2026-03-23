@@ -95,7 +95,7 @@ WITH
     avg( CASE WHEN mode = 'Sprint' THEN gridposition END ) AS avg_gridposition_sprint,
     avg(POSITION) AS avg_position,
     avg( CASE WHEN mode = 'Race' THEN POSITION END ) AS avg_position_race,
-    avg( CASE WHEN mode = 'Race' THEN POSITION END ) AS avg_position_sprint,
+    avg( CASE WHEN mode = 'Sprint' THEN POSITION END ) AS avg_position_sprint,
     sum( CASE WHEN gridposition = 1 THEN 1 ELSE 0 END ) AS qtde_1_gridposition,
     sum( CASE WHEN gridposition = 1 AND mode = 'Race' THEN 1 ELSE 0 END ) AS qtde_1_gridposition_race,
     sum( CASE WHEN gridposition = 1 AND mode = 'Sprint' THEN 1 ELSE 0 END ) AS qtde_1_gridposition_sprint,
